@@ -1,5 +1,4 @@
 // Supabase Edge Function (Deno) — CORS proxy for global market data
-// Deploy: supabase functions deploy global-market
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -14,11 +13,32 @@ const SYMBOL_TO_ID: Record<string, string> = {
   '^IRX': 'us2y', '^TNX': 'us10y', 'KRW=X': 'usdkrw',
 };
 
-async function yahooQuotes() {
-  const encoded = YAHOO_SYMBOLS.map(s => encodeURIComponent(s)).join(',');
-  const res = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encoded}`, {
-    headers: { 'User-Agent': 'Mozilla/5.0' },
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+async function getYahooCrumb(): Promise<{ crumb: string; cookie: string }> {
+  const cookieRes = await fetch('https://fc.yahoo.com', {
+    headers: { 'User-Agent': UA },
+    redirect: 'follow',
   });
+  const cookie = cookieRes.headers.get('set-cookie') ?? '';
+
+  const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+    headers: { 'User-Agent': UA, Cookie: cookie },
+  });
+  const crumb = await crumbRes.text();
+  return { crumb, cookie };
+}
+
+async function yahooQuotes() {
+  const { crumb, cookie } = await getYahooCrumb();
+  const encoded = YAHOO_SYMBOLS.map(s => encodeURIComponent(s)).join(',');
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encoded}&crumb=${encodeURIComponent(crumb)}`;
+
+  const res = await fetch(url, {
+    headers: { 'User-Agent': UA, Cookie: cookie, Accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error(`Yahoo ${res.status}`);
+
   const json = await res.json();
   const results: any[] = json?.quoteResponse?.result ?? [];
   const out: Record<string, any> = {};
@@ -38,23 +58,37 @@ async function yahooQuotes() {
 async function fredSeries(seriesId: string, id: string, apiKey: string) {
   const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${apiKey}&limit=5&sort_order=desc&file_type=json`;
   const res = await fetch(url);
+  if (!res.ok) return null;
   const json = await res.json();
   const obs: { date: string; value: string }[] = json?.observations ?? [];
   const valid = obs.filter((o: any) => o.value !== '.' && !isNaN(parseFloat(o.value)));
   if (valid.length < 2) return null;
   const current = parseFloat(valid[0].value);
   const prev = parseFloat(valid[1].value);
-  return { id, value: current, change: current - prev, changePercent: prev !== 0 ? ((current - prev) / prev) * 100 : 0, updatedAt: new Date(valid[0].date).toISOString() };
+  return {
+    id, value: current, change: current - prev,
+    changePercent: prev !== 0 ? ((current - prev) / prev) * 100 : 0,
+    updatedAt: new Date(valid[0].date).toISOString(),
+  };
 }
 
 async function fearGreed() {
   const res = await fetch('https://production.dataviz.cnn.io/index/fearandgreed/graphdata', {
-    headers: { 'User-Agent': 'Mozilla/5.0' },
+    headers: {
+      'User-Agent': UA,
+      Referer: 'https://www.cnn.com/',
+      Accept: 'application/json, text/plain, */*',
+    },
   });
+  if (!res.ok) return null;
   const json = await res.json();
   const fg = json?.fear_and_greed;
   if (!fg) return null;
-  return { score: Math.round(fg.score ?? 0), rating: fg.rating ?? '', previousClose: fg.previous_close ?? fg.score };
+  return {
+    score: Math.round(fg.score ?? 0),
+    rating: fg.rating ?? '',
+    previousClose: fg.previous_close ?? fg.score,
+  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -62,6 +96,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const fredApiKey = Deno.env.get('FRED_API_KEY') ?? '';
+
     const [quotes, fg, tips, hySpread] = await Promise.allSettled([
       yahooQuotes(),
       fearGreed(),

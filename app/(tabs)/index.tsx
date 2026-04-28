@@ -51,6 +51,22 @@ export default function HomeScreen() {
           <Text style={styles.heroQuote}>"숫자에 익숙해지면{'\n'}시장이 보이기 시작합니다"</Text>
         </LinearGradient>
 
+        {/* ── 기능 소개 ── */}
+        <View style={styles.sectionRow}>
+          <View style={[styles.sectionAccent, { backgroundColor: colors.accent }]} />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>이 앱으로 할 수 있는 것</Text>
+        </View>
+
+        <View style={[styles.featureGrid, { marginBottom: Spacing.xl }]}>
+          {featureCards.map(f => (
+            <View key={f.title} style={[styles.featureCard, { backgroundColor: f.color, borderColor: f.accent + '33' }]}>
+              <Text style={styles.featureIcon}>{f.icon}</Text>
+              <Text style={[styles.featureTitle, { color: f.accent }]}>{f.title}</Text>
+              <Text style={[styles.featureDesc, { color: isDark ? colors.textSecondary : '#475569' }]}>{f.desc}</Text>
+            </View>
+          ))}
+        </View>
+
         {/* ── 실시간 미리보기 ── */}
         <View style={styles.sectionRow}>
           <View style={[styles.sectionAccent, { backgroundColor: colors.accent }]} />
@@ -126,22 +142,6 @@ export default function HomeScreen() {
         <TouchableOpacity style={styles.moreLink} onPress={() => router.push('/(tabs)/global')} activeOpacity={0.7}>
           <Text style={[styles.moreLinkText, { color: colors.accent }]}>+ 15개 지표 전체 보기 →</Text>
         </TouchableOpacity>
-
-        {/* ── 기능 소개 ── */}
-        <View style={[styles.sectionRow, { marginTop: Spacing.xl }]}>
-          <View style={[styles.sectionAccent, { backgroundColor: colors.accent }]} />
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>이 앱으로 할 수 있는 것</Text>
-        </View>
-
-        <View style={styles.featureGrid}>
-          {featureCards.map(f => (
-            <View key={f.title} style={[styles.featureCard, { backgroundColor: f.color, borderColor: f.accent + '33' }]}>
-              <Text style={styles.featureIcon}>{f.icon}</Text>
-              <Text style={[styles.featureTitle, { color: f.accent }]}>{f.title}</Text>
-              <Text style={[styles.featureDesc, { color: isDark ? colors.textSecondary : '#475569' }]}>{f.desc}</Text>
-            </View>
-          ))}
-        </View>
 
         {/* ── CTA ── */}
         <TouchableOpacity
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   moreLinkText: { fontSize: FontSize.xs, fontWeight: '600' },
 
   // Feature grid
-  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.xl },
+  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   featureCard: { flex: 1, minWidth: '47%', borderRadius: Radius.md, borderWidth: 1, padding: Spacing.md },
   featureIcon: { fontSize: 24, marginBottom: Spacing.sm },
   featureTitle:{ fontSize: FontSize.sm, fontWeight: '700', marginBottom: 2 },
