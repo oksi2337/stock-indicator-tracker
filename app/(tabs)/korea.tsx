@@ -1,8 +1,9 @@
 import { useCallback } from 'react';
 import { ScrollView, View, Text, StyleSheet, RefreshControl } from 'react-native';
-import { C, Spacing, FontSize } from '@/constants/theme';
+import { Spacing, FontSize } from '@/constants/theme';
 import { KOREA_INDICATORS, GROUP_LABELS } from '@/constants/indicators';
 import { useKoreanMarket } from '@/hooks/useKoreanMarket';
+import { useTheme } from '@/contexts/ThemeContext';
 import { BetaBanner } from '@/components/BetaBanner';
 import { IndicatorCard } from '@/components/IndicatorCard';
 import { IndicatorGroup as GroupSection } from '@/components/IndicatorGroup';
@@ -12,6 +13,7 @@ import { SnapshotButton } from '@/components/SnapshotButton';
 import { formatTimestamp } from '@/lib/format';
 
 export default function KoreaScreen() {
+  const { colors } = useTheme();
   const { data, isLoading, isFetching, refetch, error } = useKoreanMarket();
 
   const getSnapshotData = useCallback((): Record<string, unknown> => {
@@ -30,7 +32,7 @@ export default function KoreaScreen() {
   const investorIndicators = KOREA_INDICATORS.filter(i => i.group === 'kr_investor');
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <BetaBanner />
 
       <ScrollView
@@ -40,18 +42,17 @@ export default function KoreaScreen() {
           <RefreshControl
             refreshing={isFetching && !isLoading}
             onRefresh={refetch}
-            tintColor={C.accent}
+            tintColor={colors.accent}
           />
         }
       >
         <View style={styles.updateRow}>
-          <Text style={styles.updateText}>
+          <Text style={[styles.updateText, { color: colors.textMuted }]}>
             {data ? `마지막 업데이트: ${formatTimestamp(data.fetchedAt)}` : '데이터 로딩 중...'}
           </Text>
-          {error && <Text style={styles.errorText}>⚠ 일부 데이터를 불러오지 못했습니다.</Text>}
+          {error && <Text style={[styles.errorText, { color: colors.warning }]}>⚠ 일부 데이터를 불러오지 못했습니다.</Text>}
         </View>
 
-        {/* 주요 지수 */}
         <GroupSection label={GROUP_LABELS['kr_index']}>
           {indexIndicators.map(ind => (
             <IndicatorCard
@@ -63,7 +64,6 @@ export default function KoreaScreen() {
           ))}
         </GroupSection>
 
-        {/* 시장 등락 */}
         <GroupSection label={GROUP_LABELS['kr_advance']}>
           {advanceIndicators.map(ind => (
             <AdvanceDeclineCard
@@ -75,7 +75,6 @@ export default function KoreaScreen() {
           ))}
         </GroupSection>
 
-        {/* 투자자 동향 */}
         <GroupSection label={GROUP_LABELS['kr_investor']}>
           {investorIndicators.map(ind => (
             <InvestorCard
@@ -97,11 +96,11 @@ export default function KoreaScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.background },
+  container: { flex: 1 },
   scroll: { flex: 1 },
   content: { padding: Spacing.lg },
   updateRow: { marginBottom: Spacing.lg },
-  updateText: { color: C.textMuted, fontSize: FontSize.xs },
-  errorText: { color: C.warning, fontSize: FontSize.xs, marginTop: 2 },
+  updateText: { fontSize: FontSize.xs },
+  errorText: { fontSize: FontSize.xs, marginTop: 2 },
   bottomPad: { height: 100 },
 });
